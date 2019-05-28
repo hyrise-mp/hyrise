@@ -1,4 +1,4 @@
-[![Build Status](https://hyrise-ci.epic-hpi.de/buildStatus/icon?job=Hyrise-mp/hyrise/master)](https://hyrise-ci.epic-hpi.de/blue/organizations/jenkins/hyrise%2Fhyrise/activity/)
+[![Build Status](https://hyrise-ci.epic-hpi.de/buildStatus/icon?job=Hyrise-mp/hyrise/master)](https://hyrise-ci.epic-hpi.de/blue/organizations/jenkins/hyrise-mp%2Fhyrise/activity/)
 [![Coverage Status](https://hyrise-coverage-badge.herokuapp.com/coverage_badge.svg)](https://hyrise-ci.epic-hpi.de/job/Hyrise-mp/job/hyrise/job/master/lastStableBuild/Llvm-cov_5fReport/)
 
 # Welcome to the Hyrise Master Project 2019
