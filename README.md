@@ -8,7 +8,7 @@ Query Plan Optimizations for the TPC-DS benchmark** of the Hasso Plattner Instit
 
 # Getting started
 
-*Have a look at our [contributor guidelines](CONTRIBUTING.md)*
+*Have a look at our [contributor guidelines](CONTRIBUTING.md).*
 
 You can find definitions of most of the terms and abbreviations used in the code in the [glossary](GLOSSARY.md). If you cannot find something that you are looking for, feel free to open an issue.
 
