@@ -131,7 +131,8 @@ bool is_trivial_join_predicate(const AbstractExpression& expression, const Abstr
 namespace opossum {
 
 SQLTranslator::SQLTranslator(const UseMvcc use_mvcc)
-    : SQLTranslator(use_mvcc, nullptr, std::make_shared<ParameterIDAllocator>()) {}
+    : SQLTranslator(use_mvcc, nullptr, std::make_shared<ParameterIDAllocator>(),
+                    std::unordered_map<std::string, std::shared_ptr<LQPView>>()) {}
 
 std::vector<ParameterID> SQLTranslator::parameter_ids_of_value_placeholders() const {
   const auto& parameter_ids_of_value_placeholders = _parameter_id_allocator->value_placeholders();
@@ -159,10 +160,12 @@ std::vector<std::shared_ptr<AbstractLQPNode>> SQLTranslator::translate_parser_re
 
 SQLTranslator::SQLTranslator(const UseMvcc use_mvcc,
                              const std::shared_ptr<SQLIdentifierResolverProxy>& external_sql_identifier_resolver_proxy,
-                             const std::shared_ptr<ParameterIDAllocator>& parameter_id_allocator)
+                             const std::shared_ptr<ParameterIDAllocator>& parameter_id_allocator,
+                             const std::unordered_map<std::string, std::shared_ptr<LQPView>>& with_descriptions)
     : _use_mvcc(use_mvcc),
       _external_sql_identifier_resolver_proxy(external_sql_identifier_resolver_proxy),
-      _parameter_id_allocator(parameter_id_allocator) {}
+      _parameter_id_allocator(parameter_id_allocator),
+      _with_descriptions(with_descriptions) {}
 
 std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_statement(const hsql::SQLStatement& statement) {
   switch (statement.type()) {
@@ -192,19 +195,27 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_statement(const hsql:
 
 std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_select_statement(const hsql::SelectStatement& select) {
   // SQL Orders of Operations
-  // 1. FROM clause (incl. JOINs and sub-SELECTs that are part of this)
-  // 2. SELECT list (to retrieve aliases)
-  // 3. WHERE clause
-  // 4. GROUP BY clause
-  // 5. HAVING clause
-  // 6. SELECT clause (incl. DISTINCT)
-  // 7. UNION clause
-  // 8. ORDER BY clause
-  // 9. LIMIT clause
+  // 1. WITH clause
+  // 2. FROM clause (incl. JOINs and sub-SELECTs that are part of this)
+  // 3. SELECT list (to retrieve aliases)
+  // 4. WHERE clause
+  // 5. GROUP BY clause
+  // 6. HAVING clause
+  // 7. SELECT clause (incl. DISTINCT)
+  // 8. UNION clause
+  // 9. ORDER BY clause
+  // 10. LIMIT clause
 
   AssertInput(select.selectList, "SELECT list needs to exist");
   AssertInput(!select.selectList->empty(), "SELECT list needs to have entries");
   AssertInput(!select.unionSelect, "Set operations (UNION/INTERSECT/...) are not supported yet");
+
+  // Translate WITH clause
+  if (select.withDescriptions) {
+    for (const auto& desc : *select.withDescriptions) {
+      _translate_hsql_with_description(*desc);
+    }
+  }
 
   // Translate FROM
   if (select.fromTable) {
@@ -265,6 +276,26 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_select_statement(cons
   }
 
   return _current_lqp;
+}
+
+void SQLTranslator::_translate_hsql_with_description(hsql::WithDescription& desc) {
+  SQLTranslator with_translator{_use_mvcc, nullptr, _parameter_id_allocator, _with_descriptions};
+  auto lqp = with_translator._translate_select_statement(*desc.select);
+
+  // Save mappings: ColumnID -> ColumnName
+  std::unordered_map<ColumnID, std::string> column_names;
+  for (auto column_id = ColumnID{0}; column_id < lqp->column_expressions().size(); ++column_id) {
+    const auto identifiers =
+        with_translator._sql_identifier_resolver->get_expression_identifiers(lqp->column_expressions()[column_id]);
+    for (const auto& identifier : identifiers) {
+      column_names.insert_or_assign(column_id, identifier.column_name);
+    }
+  }
+
+  // Store resolved WithDescription / temporary view
+  auto lqp_view = std::make_shared<LQPView>(lqp, column_names);
+  //   A WITH description masks a preceding WITH description if their aliases are identical
+  _with_descriptions.insert_or_assign(desc.alias, lqp_view);
 }
 
 std::shared_ptr<AbstractExpression> SQLTranslator::translate_hsql_expr(const hsql::Expr& hsql_expr,
@@ -467,7 +498,27 @@ SQLTranslator::TableSourceState SQLTranslator::_translate_table_origin(const hsq
 
   switch (hsql_table_ref.type) {
     case hsql::kTableName: {
-      if (StorageManager::get().has_table(hsql_table_ref.name)) {
+      // WITH descriptions or sub-queries are treated as though they were inline views or tables
+      // They mask existing tables or views with the same name.
+      if (_with_descriptions.count(hsql_table_ref.name)) {
+        const auto iter = _with_descriptions.find(hsql_table_ref.name);
+        AssertInput(iter != _with_descriptions.end(), "No such WITH query named '" + hsql_table_ref.name + "'");
+
+        const auto lqp_view = iter->second->deep_copy();
+        lqp = lqp_view->lqp;
+
+        // Add all named columns to the IdentifierContext
+        for (auto column_id = ColumnID{0}; column_id < lqp_view->lqp->column_expressions().size(); ++column_id) {
+          const auto column_expression = lqp_view->lqp->column_expressions()[column_id];
+
+          const auto column_name_iter = lqp_view->column_names.find(column_id);
+          if (column_name_iter != lqp_view->column_names.end()) {
+            sql_identifier_resolver->add_column_name(column_expression, column_name_iter->second);
+          }
+          sql_identifier_resolver->set_table_name(column_expression, hsql_table_ref.name);
+        }
+
+      } else if (StorageManager::get().has_table(hsql_table_ref.name)) {
         lqp = _translate_stored_table(hsql_table_ref.name, sql_identifier_resolver);
 
       } else if (StorageManager::get().has_view(hsql_table_ref.name)) {
@@ -499,7 +550,8 @@ SQLTranslator::TableSourceState SQLTranslator::_translate_table_origin(const hsq
       AssertInput(hsql_table_ref.alias && hsql_table_ref.alias->name, "Every nested SELECT must have its own alias");
       table_name = hsql_table_ref.alias->name;
 
-      SQLTranslator subquery_translator{_use_mvcc, _external_sql_identifier_resolver_proxy, _parameter_id_allocator};
+      SQLTranslator subquery_translator{_use_mvcc, _external_sql_identifier_resolver_proxy, _parameter_id_allocator,
+                                        _with_descriptions};
       lqp = subquery_translator._translate_select_statement(*hsql_table_ref.select);
 
       for (const auto& subquery_expression : lqp->column_expressions()) {
@@ -1400,7 +1452,8 @@ std::shared_ptr<LQPSubqueryExpression> SQLTranslator::_translate_hsql_subquery(
   const auto sql_identifier_proxy = std::make_shared<SQLIdentifierResolverProxy>(
       sql_identifier_resolver, _parameter_id_allocator, _external_sql_identifier_resolver_proxy);
 
-  auto subquery_translator = SQLTranslator{_use_mvcc, sql_identifier_proxy, _parameter_id_allocator};
+  auto subquery_translator =
+      SQLTranslator{_use_mvcc, sql_identifier_proxy, _parameter_id_allocator, _with_descriptions};
   const auto subquery_lqp = subquery_translator._translate_select_statement(select);
   const auto parameter_count = sql_identifier_proxy->accessed_expressions().size();
 
