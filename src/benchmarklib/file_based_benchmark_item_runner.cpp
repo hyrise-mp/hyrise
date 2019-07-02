@@ -3,6 +3,7 @@
 #include <boost/algorithm/string.hpp>
 #include <filesystem>
 #include <fstream>
+#include <valgrind/callgrind.h>
 
 #include "SQLParser.h"
 #include "sql/create_sql_parser_error_message.hpp"
@@ -43,7 +44,9 @@ FileBasedBenchmarkItemRunner::FileBasedBenchmarkItemRunner(
 }
 
 void FileBasedBenchmarkItemRunner::_on_execute_item(const BenchmarkItemID item_id, BenchmarkSQLExecutor& sql_executor) {
+  CALLGRIND_START_INSTRUMENTATION;
   sql_executor.execute(_queries[item_id].sql);
+  CALLGRIND_STOP_INSTRUMENTATION;
 }
 
 std::string FileBasedBenchmarkItemRunner::item_name(const BenchmarkItemID item_id) const {
