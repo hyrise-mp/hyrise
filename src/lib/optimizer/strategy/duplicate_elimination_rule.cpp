@@ -28,21 +28,18 @@ void DuplicateEliminationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& 
   std::cout << "DuplicateEliminationRule\n";
   _possible_replacement_mapping.clear();
   _sub_plans.clear();
-  const auto duplicate_afflicted_lqp = node->deep_copy();
-
 
   // PHASE 1 - identify where placements could be done, depth first traversal
   _create_possible_replacement_mapping(node);
   // PHASE 2 - replace sub-trees at the lowest level possible, bredth first traversal
   //         - build mapping structure 
   LQPNodeMapping node_mapping;
-  std::cout << "pre mapping size: " << node_mapping.size() << "\n";
+  // std::cout << "pre mapping size: " << node_mapping.size() << "\n";
   _replace_nodes_traversal(node, node_mapping);
-  std::cout << "post mapping size: " << node_mapping.size() << "\n";
+  // std::cout << "post mapping size: " << node_mapping.size() << "\n";
   // PHASE 3 - correct the references for all lqp column expressions of nodes which
   //           were not replaces.
 
-  std::cout << *duplicate_afflicted_lqp << "\n";
   std::cout << *node << "\n";
 
   // const auto node_mapping = lqp_create_node_mapping(duplicate_afflicted_lqp, node);
@@ -118,7 +115,7 @@ void DuplicateEliminationRule::_replace_nodes_traversal(
     const auto replacement_iter = _possible_replacement_mapping.find(current_node);
     if(replacement_iter != _possible_replacement_mapping.end()){
       node_mapping = lqp_create_node_mapping(current_node, replacement_iter->second, std::move(node_mapping));
-      std::cout << "mapping size increased: " << node_mapping.size() << "\n";
+      // std::cout << "mapping size increased: " << node_mapping.size() << "\n";
       for (const auto& output : current_node->outputs()) {
         const auto& input_side = current_node->get_input_side(output);
         output->set_input(input_side, replacement_iter->second);
