@@ -93,10 +93,10 @@ void lqp_find_subplan_roots_impl(std::vector<std::shared_ptr<AbstractLQPNode>>& 
 namespace opossum {
 
 LQPNodeMapping lqp_create_node_mapping(const std::shared_ptr<AbstractLQPNode>& lhs,
-                                       const std::shared_ptr<AbstractLQPNode>& rhs) {
-  LQPNodeMapping mapping;
+                                       const std::shared_ptr<AbstractLQPNode>& rhs,
+                                       LQPNodeMapping&& mapping) {
   lqp_create_node_mapping_impl(mapping, lhs, rhs);
-  return mapping;
+  return std::move(mapping);
 }
 
 std::optional<LQPMismatch> lqp_find_subplan_mismatch(const std::shared_ptr<const AbstractLQPNode>& lhs,
