@@ -35,7 +35,10 @@ void DuplicateEliminationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& 
   _create_possible_replacement_mapping(node);
   // PHASE 2 - replace sub-trees at the lowest level possible, bredth first traversal
   //         - build mapping structure 
-  _replace_nodes_traversal(node);
+  LQPNodeMapping node_mapping;
+  std::cout << "pre mapping size: " << node_mapping.size() << "\n";
+  _replace_nodes_traversal(node, node_mapping);
+  std::cout << "post mapping size: " << node_mapping.size() << "\n";
   // PHASE 3 - correct the references for all lqp column expressions of nodes which
   //           were not replaces.
 
@@ -49,9 +52,9 @@ void DuplicateEliminationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& 
   //   std::cout << orig << " -> " << repl << "\n";
   // }
 
-  // if(!_possible_replacement_mapping.empty()){
-  //   _adapt_expressions_traversal(node, node_mapping);
-  // }
+  if(!_possible_replacement_mapping.empty()){
+    _adapt_expressions_traversal(node, node_mapping);
+  }
 
 
 }
@@ -95,7 +98,7 @@ void DuplicateEliminationRule::_create_possible_replacement_mapping(
 }
 
 void DuplicateEliminationRule::_replace_nodes_traversal(
-        const std::shared_ptr<AbstractLQPNode>& start_node) const {
+        const std::shared_ptr<AbstractLQPNode>& start_node, LQPNodeMapping& node_mapping) const {
   std::queue<std::shared_ptr<AbstractLQPNode>> queue{};
   std::unordered_set<std::shared_ptr<AbstractLQPNode>> visited{};
 
@@ -114,6 +117,8 @@ void DuplicateEliminationRule::_replace_nodes_traversal(
 
     const auto replacement_iter = _possible_replacement_mapping.find(current_node);
     if(replacement_iter != _possible_replacement_mapping.end()){
+      node_mapping = lqp_create_node_mapping(current_node, replacement_iter->second, std::move(node_mapping));
+      std::cout << "mapping size increased: " << node_mapping.size() << "\n";
       for (const auto& output : current_node->outputs()) {
         const auto& input_side = current_node->get_input_side(output);
         output->set_input(input_side, replacement_iter->second);

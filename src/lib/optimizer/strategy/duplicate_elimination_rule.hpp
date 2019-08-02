@@ -26,7 +26,7 @@ class DuplicateEliminationRule : public AbstractRule {
 
  protected:
   void _create_possible_replacement_mapping(const std::shared_ptr<AbstractLQPNode>& node) const;
-  void _replace_nodes_traversal(const std::shared_ptr<AbstractLQPNode>& node) const;
+  void _replace_nodes_traversal(const std::shared_ptr<AbstractLQPNode>& node, LQPNodeMapping& node_mapping) const;
   void _adapt_expressions_traversal(const std::shared_ptr<AbstractLQPNode>& node, const LQPNodeMapping& node_mapping) const;
   void _print_traversal(const std::shared_ptr<AbstractLQPNode>& node) const;
   mutable std::unordered_map<std::shared_ptr<AbstractLQPNode>, std::shared_ptr<AbstractLQPNode>>
