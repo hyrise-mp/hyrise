@@ -86,13 +86,13 @@ void expression_adapt_to_different_lqp(std::shared_ptr<AbstractExpression>& expr
     if (expression_ptr->type != ExpressionType::LQPColumn) return ExpressionVisitation::VisitArguments;
     // std::cout << typeid(*expression_ptr).name() << "\n";
     const auto lqp_column_expression_ptr = std::dynamic_pointer_cast<LQPColumnExpression>(expression_ptr);
-    if(!lqp_column_expression_ptr){
+    if (!lqp_column_expression_ptr) {
       return ExpressionVisitation::DoNotVisitArguments;
     }
     Assert(lqp_column_expression_ptr, "Asked to adapt expression in LQP, but encountered non-LQP ColumnExpression");
 
     const auto new_expr = expression_adapt_to_different_lqp(*lqp_column_expression_ptr, node_mapping);
-    if(new_expr){
+    if (new_expr) {
       expression_ptr = new_expr;
     }
 
@@ -104,7 +104,7 @@ std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQP
                                                                        const LQPNodeMapping& node_mapping) {
   const auto node = lqp_column_expression.column_reference.original_node();
   const auto node_mapping_iter = node_mapping.find(node);
-  if(node_mapping_iter == node_mapping.end()){
+  if (node_mapping_iter == node_mapping.end()) {
     // std::cout << "Not found: " << node << ", " << node->description() << "\n";
     return nullptr;
   }

@@ -31,7 +31,7 @@ void lqp_create_node_mapping_impl(LQPNodeMapping& mapping, const std::shared_ptr
   const auto mapping_iter = mapping.find(lhs);
   if (mapping_iter != mapping.end()) return;
 
-  // std::cout << "### MAPPING\nlhs:\n" << lhs->description() << "\nrhs:\n" << rhs->description() << "\n";  
+  // std::cout << "### MAPPING\nlhs:\n" << lhs->description() << "\nrhs:\n" << rhs->description() << "\n";
 
   mapping[lhs] = rhs;
 
@@ -93,8 +93,7 @@ void lqp_find_subplan_roots_impl(std::vector<std::shared_ptr<AbstractLQPNode>>& 
 namespace opossum {
 
 LQPNodeMapping lqp_create_node_mapping(const std::shared_ptr<AbstractLQPNode>& lhs,
-                                       const std::shared_ptr<AbstractLQPNode>& rhs,
-                                       LQPNodeMapping&& mapping) {
+                                       const std::shared_ptr<AbstractLQPNode>& rhs, LQPNodeMapping&& mapping) {
   lqp_create_node_mapping_impl(mapping, lhs, rhs);
   return std::move(mapping);
 }
