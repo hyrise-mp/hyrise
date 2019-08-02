@@ -57,19 +57,13 @@ std::shared_ptr<AbstractExpression> expression_copy_and_adapt_to_different_lqp(c
                                                                                const LQPNodeMapping& node_mapping);
 
 /**
- * Makes all column references points to their equivalent in a copied LQP
- */
-void expressions_adapt_to_different_lqp(std::vector<std::shared_ptr<AbstractExpression>>& expressions,
-                                       const LQPNodeMapping& node_mapping, const std::vector<std::shared_ptr<AbstractLQPNode>>& blacklist = {});
-
-/**
- * Makes all column references points to their equivalent in a copied LQP
+ * Makes all column references point to their equivalent in a copied LQP
  */
 void expression_adapt_to_different_lqp(std::shared_ptr<AbstractExpression>& expression,
-                                       const LQPNodeMapping& node_mapping, const std::vector<std::shared_ptr<AbstractLQPNode>>& blacklist = {});
+                                       const LQPNodeMapping& node_mapping);
 
 std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQPColumnExpression& lqp_column_expression,
-                                                                       const LQPNodeMapping& node_mapping, const std::vector<std::shared_ptr<AbstractLQPNode>>& blacklist = {});
+                                                                       const LQPNodeMapping& node_mapping);
 
 /**
  * Create a comma separated string with the AbstractExpression::as_column_name() of each expression
