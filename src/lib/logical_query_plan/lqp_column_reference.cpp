@@ -15,13 +15,15 @@ LQPColumnReference::LQPColumnReference(const std::shared_ptr<const AbstractLQPNo
     : _original_node(original_node), _original_column_id(original_column_id) {}
 
 std::shared_ptr<const AbstractLQPNode> LQPColumnReference::original_node() const { return _original_node.lock(); }
+std::shared_ptr<const AbstractLQPNode> LQPColumnReference::old_original_node() const { return _old_original_node.lock(); }
 
 ColumnID LQPColumnReference::original_column_id() const { return _original_column_id; }
 
 bool LQPColumnReference::operator==(const LQPColumnReference& rhs) const {
   // std::cout << "colRef==, orig: " << original_node()->description() << ", " << original_node()
   // << " , rhs: " << rhs.original_node()->description() << ", " << rhs.original_node() << "\n";
-  return original_node() == rhs.original_node() && _original_column_id == rhs._original_column_id;
+  return original_node() == rhs.original_node() && _original_column_id == rhs._original_column_id
+    && old_original_node() == rhs.old_original_node();
 }
 
 std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_reference) {

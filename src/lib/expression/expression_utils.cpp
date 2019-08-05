@@ -112,6 +112,7 @@ std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQP
   //        "Couldn't find referenced node (" + node->description() + ") in NodeMapping");
   LQPColumnReference adapted_column_reference{node_mapping_iter->second,
                                               lqp_column_expression.column_reference.original_column_id()};
+  adapted_column_reference._old_original_node = lqp_column_expression.column_reference.original_node();
 
   return std::make_shared<LQPColumnExpression>(adapted_column_reference);
 }
