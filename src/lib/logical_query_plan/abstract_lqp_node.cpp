@@ -196,14 +196,19 @@ const std::vector<std::shared_ptr<AbstractExpression>>& AbstractLQPNode::column_
 }
 
 std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression& expression) const {
+  std::optional<ColumnID> c;
   const auto& column_expressions = this->column_expressions();  // Avoid redundant retrieval in loop below
   for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
     // if(*column_expressions[column_id] == expression){
     //   std::cout << "--found\n";
     // }
-    if (*column_expressions[column_id] == expression) return column_id;
+
+    if (*column_expressions[column_id] == expression) {
+      Assert(!c, "GNA");
+      c = column_id;
+    }
   }
-  return std::nullopt;
+  return c;
 }
 
 ColumnID AbstractLQPNode::get_column_id(const AbstractExpression& expression) const {
