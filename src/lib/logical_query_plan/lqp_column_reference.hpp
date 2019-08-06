@@ -19,9 +19,8 @@ class LQPColumnReference final {
   LQPColumnReference(const std::shared_ptr<const AbstractLQPNode>& original_node, ColumnID original_column_id);
 
   std::shared_ptr<const AbstractLQPNode> original_node() const;
-  std::shared_ptr<const AbstractLQPNode> old_original_node() const;
   ColumnID original_column_id() const;
-  std::weak_ptr<const AbstractLQPNode> _old_original_node;
+  uintptr_t _old_original_node;
   bool operator==(const LQPColumnReference& rhs) const;
 
  private:

@@ -3,6 +3,7 @@
 #include <map>
 #include <queue>
 #include <string>
+#include <typeinfo>
 
 #include "boost/functional/hash.hpp"
 #include "expression/expression_utils.hpp"
@@ -18,7 +19,16 @@ void DuplicateEliminationRule::_print_traversal(const std::shared_ptr<AbstractLQ
   if (node) {
     // if(true || node->type == LQPNodeType::StoredTable){
     std::cout << node->description() << ", " << node << "\n";
-    // }
+    for(const auto& epxr : node->node_expressions){
+      visit_expression(epxr, [&](auto& expression_ptr) {
+        std::cout << "visited expr: " << *expression_ptr << ", " << expression_ptr << "\n";
+        if (expression_ptr->type != ExpressionType::LQPColumn){
+          return ExpressionVisitation::VisitArguments;
+        }else {
+          return ExpressionVisitation::DoNotVisitArguments;
+        }
+      });
+    }
     _print_traversal(node->left_input());
     _print_traversal(node->right_input());
   }
@@ -29,30 +39,37 @@ void DuplicateEliminationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& 
   _possible_replacement_mapping.clear();
   _sub_plans.clear();
 
+  // std::cout << "###PRE PRINT\n";
+  // _print_traversal(node);
+  // std::cout << "END###\n";
+
   // PHASE 1 - identify where placements could be done, depth first traversal
   _create_possible_replacement_mapping(node);
-  // PHASE 2 - replace sub-trees at the lowest level possible, bredth first traversal
-  //         - build mapping structure
-  LQPNodeMapping node_mapping;
-  // std::cout << "pre mapping size: " << node_mapping.size() << "\n";
-  _replace_nodes_traversal(node, node_mapping);
-  // std::cout << "post mapping size: " << node_mapping.size() << "\n";
-  // PHASE 3 - correct the references for all lqp column expressions of nodes which
-  //           were not replaces.
-
-  // std::cout << *node << "\n";
-
-  // const auto node_mapping = lqp_create_node_mapping(duplicate_afflicted_lqp, node);
-
-  // std::cout << "\n### mapping:\n";
-  // for(const auto& [orig, repl] : node_mapping){
-  //   std::cout << orig << " -> " << repl << "\n";
-  // }
-
+  std::cout << "_possible_replacement_mapping created\n";
+  
   if (!_possible_replacement_mapping.empty()) {
-    std::cout << "REPLACEMENT HAPPENED!\n";
+    // PHASE 2 - replace sub-trees at the lowest level possible, bredth first traversal
+    //         - build mapping structure
+    LQPNodeMapping node_mapping;
+    _replace_nodes_traversal(node, node_mapping);
+    std::cout << "_replace_nodes_traversa done\n";
+    // PHASE 3 - correct the references for all lqp column expressions of nodes which
+    //           were not replaces.
+
+    // std::cout << *node << "\n";
+
+    // const auto node_mapping = lqp_create_node_mapping(duplicate_afflicted_lqp, node);
+
+    // std::cout << "\n### mapping:\n";
+    // for(const auto& [orig, repl] : node_mapping){
+    //   std::cout << orig << " -> " << repl << "\n";
+    // }
     _adapt_expressions_traversal(node, node_mapping);
+    std::cout << "_adapt_expressions_traversal done\n";
   }
+  // std::cout << "########## PRINT\n";
+  // _print_traversal(node);
+  std::cout << "### DUPL END ###\n";
 }
 
 // Alias [ca_county, d_year, (SUM(ws_ext_sales_price) * 1) / SUM(ws_ext_sales_price) AS web_q1_q2_increase, (SUM(ss_ext_sales_price) * 1) / SUM(ss_ext_sales_price) AS store_q1_q2_increase, (SUM(ws_ext_sales_price) * 1) / SUM(ws_ext_sales_price) AS web_q2_q3_increase, (SUM(ss_ext_sales_price) * 1) / SUM(ss_ext_sales_price) AS store_q2_q3_increase]
@@ -80,7 +97,8 @@ void DuplicateEliminationRule::_create_possible_replacement_mapping(
   }
 
   const auto duplicate_iter = std::find_if(_sub_plans.cbegin(), _sub_plans.cend(),
-                                           [&node](const auto& sub_plan) { return *node == *sub_plan; });
+                                           [&node](const auto& sub_plan) {
+      return *node == *sub_plan; });
   // std::cout << "processing " << node->description() << ", " << node << "\n";
   if (duplicate_iter == _sub_plans.end()) {
     _sub_plans.emplace_back(node);
@@ -131,9 +149,11 @@ void DuplicateEliminationRule::_replace_nodes_traversal(const std::shared_ptr<Ab
 void DuplicateEliminationRule::_adapt_expressions_traversal(const std::shared_ptr<AbstractLQPNode>& node,
                                                             const LQPNodeMapping& node_mapping) const {
   if (node) {
+    std::cout << "adapt expr. of node: " << node->description() << ", " << node << "\n";
     for (auto& expression : node->node_expressions) {
-      expression_adapt_to_different_lqp(expression, node_mapping);
+      expression_adapt_to_different_lqp(expression, node_mapping, true);
     }
+    std::cout << " - done\n";
     _adapt_expressions_traversal(node->left_input(), node_mapping);
     _adapt_expressions_traversal(node->right_input(), node_mapping);
   }

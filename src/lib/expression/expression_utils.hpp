@@ -60,10 +60,10 @@ std::shared_ptr<AbstractExpression> expression_copy_and_adapt_to_different_lqp(c
  * Makes all column references point to their equivalent in a copied LQP
  */
 void expression_adapt_to_different_lqp(std::shared_ptr<AbstractExpression>& expression,
-                                       const LQPNodeMapping& node_mapping);
+                                       const LQPNodeMapping& node_mapping, bool old_sensitive = false);
 
 std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQPColumnExpression& lqp_column_expression,
-                                                                       const LQPNodeMapping& node_mapping);
+                                                                       const LQPNodeMapping& node_mapping, bool old_sensitive = false);
 
 /**
  * Create a comma separated string with the AbstractExpression::as_column_name() of each expression

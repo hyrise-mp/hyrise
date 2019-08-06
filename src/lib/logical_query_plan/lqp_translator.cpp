@@ -148,6 +148,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_stored_table_node(
 
 std::shared_ptr<AbstractOperator> LQPTranslator::_translate_predicate_node(
     const std::shared_ptr<AbstractLQPNode>& node) const {
+  std::cout << "_translate_predicate_node: " << node->description() << ", " << node << "\n";
   const auto input_node = node->left_input();
   const auto input_operator = translate_node(input_node);
   const auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node);
@@ -290,6 +291,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_sort_node(
 
 std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
     const std::shared_ptr<AbstractLQPNode>& node) const {
+  std::cout << "_translate_join_node\n";
   const auto input_left_operator = translate_node(node->left_input());
   const auto input_right_operator = translate_node(node->right_input());
 
@@ -306,6 +308,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
   join_predicates.reserve(join_node->join_predicates().size());
 
   for (const auto& predicate_expression : join_node->join_predicates()) {
+    std::cout << "from expr\n";
     auto join_predicate =
         OperatorJoinPredicate::from_expression(*predicate_expression, *node->left_input(), *node->right_input());
     // Assert that the Join Predicates are simple, e.g. of the form <column_a> <predicate> <column_b>.
@@ -506,7 +509,6 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_dummy_table_node(
 std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
     const std::shared_ptr<AbstractExpression>& lqp_expression, const std::shared_ptr<AbstractLQPNode>& node) const {
   auto pqp_expression = lqp_expression->deep_copy();
-
   /**
     * Resolve Expressions to PQPColumnExpressions referencing columns from the input Operator. After this, no
     * LQPColumnExpressions remain in the pqp_expression and it is a valid PQP expression.
@@ -525,6 +527,7 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
 
     // Resolve SubqueryExpression
     if (expression->type == ExpressionType::LQPSubquery) {
+      std::cout << "LQPSubquery\n";
       const auto subquery_expression = std::dynamic_pointer_cast<LQPSubqueryExpression>(expression);
       Assert(subquery_expression, "Expected LQPSubqueryExpression");
 
@@ -552,6 +555,9 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
       return ExpressionVisitation::DoNotVisitArguments;
     }
 
+    if(expression->type == ExpressionType::LQPColumn){
+      std::cout << "address: " << expression << "\n";
+    }
     AssertInput(expression->type != ExpressionType::LQPColumn,
                 "Failed to resolve Column '"s + expression->as_column_name() + "', LQP is invalid");
 

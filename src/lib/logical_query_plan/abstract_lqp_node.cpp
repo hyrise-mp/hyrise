@@ -5,6 +5,8 @@
 
 #include "expression/abstract_expression.hpp"
 #include "expression/expression_utils.hpp"
+#include "logical_query_plan/lqp_column_reference.hpp"
+#include "expression/lqp_column_expression.hpp"
 #include "expression/lqp_subquery_expression.hpp"
 #include "join_node.hpp"
 #include "lqp_utils.hpp"
@@ -195,17 +197,36 @@ const std::vector<std::shared_ptr<AbstractExpression>>& AbstractLQPNode::column_
   return left_input()->column_expressions();
 }
 
+// std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression& expression) const {
+//   std::cout << "node: " << this->description() << "\n";
+//   const auto& column_expressions = this->column_expressions();  // Avoid redundant retrieval in loop below
+//   for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
+//     if (*column_expressions[column_id] == expression) return column_id;
+//   }
+//   return std::nullopt;
+// }
+
 std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression& expression) const {
   std::optional<ColumnID> c;
+  // std::cout << "find col id: " << this->description() << ", " << this << "\n";
   const auto& column_expressions = this->column_expressions();  // Avoid redundant retrieval in loop below
+  // std::cout << "  searched: " << expression << ", " << &expression << "\n";
   for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
-    // if(*column_expressions[column_id] == expression){
-    //   std::cout << "--found\n";
-    // }
-
     if (*column_expressions[column_id] == expression) {
-      Assert(!c, "GNA");
-      c = column_id;
+          std::cout << "  candidate: " << *column_expressions[column_id]  << ", " << column_expressions[column_id] << "\n";
+      if (expression.type == ExpressionType::LQPColumn){
+        auto& col_ex_candidate = dynamic_cast<LQPColumnExpression &>(*column_expressions[column_id]);
+        auto& col_ex_searched = dynamic_cast<const LQPColumnExpression &>(expression);
+        std::cout << "  searched old: " << col_ex_searched.column_reference._old_original_node
+         << " | candidate old: " << col_ex_candidate.column_reference._old_original_node << "\n";
+        if(col_ex_candidate.column_reference._old_original_node == col_ex_searched.column_reference._old_original_node){
+          Assert(!c, "GNA");
+          c = column_id;
+        } 
+      } else {
+        Assert(!c, "GNA");
+        c = column_id;
+      }
     }
   }
   return c;
@@ -300,9 +321,7 @@ std::ostream& operator<<(std::ostream& stream, const AbstractLQPNode& node) {
       return inputs;
     };
 
-    const auto node_print_fn = [](const auto& node2, auto& stream2) {
-      stream2 << node2->description() << ", " << node2;
-    };
+    const auto node_print_fn = [](const auto& node2, auto& stream2) { stream2 << node2->description(); };
 
     print_directed_acyclic_graph<const AbstractLQPNode>(root.shared_from_this(), get_inputs_fn, node_print_fn, stream);
   };
