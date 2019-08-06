@@ -208,25 +208,30 @@ const std::vector<std::shared_ptr<AbstractExpression>>& AbstractLQPNode::column_
 
 std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression& expression) const {
   std::optional<ColumnID> c;
-  // std::cout << "find col id: " << this->description() << ", " << this << "\n";
+  std::cout << "find col id: " << this->description() << ", " << this << "\n";
   const auto& column_expressions = this->column_expressions();  // Avoid redundant retrieval in loop below
   // std::cout << "  searched: " << expression << ", " << &expression << "\n";
   for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
     if (*column_expressions[column_id] == expression) {
           std::cout << "  candidate: " << *column_expressions[column_id]  << ", " << column_expressions[column_id] << "\n";
-      if (expression.type == ExpressionType::LQPColumn){
-        auto& col_ex_candidate = dynamic_cast<LQPColumnExpression &>(*column_expressions[column_id]);
-        auto& col_ex_searched = dynamic_cast<const LQPColumnExpression &>(expression);
-        std::cout << "  searched old: " << col_ex_searched.column_reference._old_original_node
-         << " | candidate old: " << col_ex_candidate.column_reference._old_original_node << "\n";
-        if(col_ex_candidate.column_reference._old_original_node == col_ex_searched.column_reference._old_original_node){
-          Assert(!c, "GNA");
-          c = column_id;
+      // if (expression.type == ExpressionType::LQPColumn){
+      //   auto& col_ex_candidate = dynamic_cast<LQPColumnExpression &>(*column_expressions[column_id]);
+      //   auto& col_ex_searched = dynamic_cast<const LQPColumnExpression &>(expression);
+      //   std::cout << "  searched old: " << col_ex_searched.column_reference._old_original_node
+      //    << " | candidate old: " << col_ex_candidate.column_reference._old_original_node << "\n";
+      //   if(col_ex_candidate.column_reference._old_original_node == col_ex_searched.column_reference._old_original_node){
+      //     Assert(!c, "GNA");
+      //     c = column_id;
+      //   } 
+      // } else {
+        // Assert(!c, "GNA");
+        if(this->description() == "[Join] Mode: Cross"){
+          return column_id;
+        } else{
+          std::cout << "GNA\n";
         } 
-      } else {
-        Assert(!c, "GNA");
         c = column_id;
-      }
+      // }
     }
   }
   return c;

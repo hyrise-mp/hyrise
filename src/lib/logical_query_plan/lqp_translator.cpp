@@ -152,7 +152,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_predicate_node(
   const auto input_node = node->left_input();
   const auto input_operator = translate_node(input_node);
   const auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node);
-
+  std::cout << "_create_table_or_index_scan\n";
   switch (predicate_node->scan_type) {
     case ScanType::TableScan:
       return _translate_predicate_node_to_table_scan(predicate_node, input_operator);
@@ -508,13 +508,17 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_dummy_table_node(
 
 std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
     const std::shared_ptr<AbstractExpression>& lqp_expression, const std::shared_ptr<AbstractLQPNode>& node) const {
+  std::cout << "left input node: " << node->description() << ", " << node << "\n";
+  std::cout << "_translate_expression, lqp_expression: " << *lqp_expression << ", " << lqp_expression << "\n";
   auto pqp_expression = lqp_expression->deep_copy();
+  std::cout << "pqp_expression: " << pqp_expression << "\n";
   /**
     * Resolve Expressions to PQPColumnExpressions referencing columns from the input Operator. After this, no
     * LQPColumnExpressions remain in the pqp_expression and it is a valid PQP expression.
     */
   visit_expression(pqp_expression, [&](auto& expression) {
     // Try to resolve the Expression to a column from the input node
+    std::cout << "lpq translator, transl. expr., visit expr., expr: " << expression << "\n";
     const auto column_id = node->find_column_id(*expression);
     if (column_id) {
       const auto referenced_expression = node->column_expressions()[*column_id];

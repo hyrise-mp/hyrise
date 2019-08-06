@@ -17,16 +17,22 @@ std::string DuplicateEliminationRule::name() const { return "Duplicate Eliminati
 
 void DuplicateEliminationRule::_print_traversal(const std::shared_ptr<AbstractLQPNode>& node) const {
   if (node) {
-    // if(true || node->type == LQPNodeType::StoredTable){
     std::cout << node->description() << ", " << node << "\n";
-    for(const auto& epxr : node->node_expressions){
-      visit_expression(epxr, [&](auto& expression_ptr) {
-        std::cout << "visited expr: " << *expression_ptr << ", " << expression_ptr << "\n";
+    std::cout << "column expressions\n";
+    for(auto& expression : node->column_expressions()){
+      const auto& column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(expression);
+      std::cout << *column_expression << ", " << column_expression << " orig: " << column_expression->column_reference.original_node()
+      <<", old:" << column_expression->column_reference._old_original_node << "\n";
+    }
+    std::cout << "node expressions\n";
+    for ( auto& expression : node->node_expressions) {
+      std::cout << "expression: " << expression << "\n";
+      visit_expression(expression, [&](auto& expression_ptr) {
+        std::cout << "  visited expr: " << *expression_ptr << ", " << expression_ptr << "\n";
         if (expression_ptr->type != ExpressionType::LQPColumn){
           return ExpressionVisitation::VisitArguments;
-        }else {
-          return ExpressionVisitation::DoNotVisitArguments;
         }
+        return ExpressionVisitation::DoNotVisitArguments;
       });
     }
     _print_traversal(node->left_input());
@@ -35,6 +41,11 @@ void DuplicateEliminationRule::_print_traversal(const std::shared_ptr<AbstractLQ
 }
 
 void DuplicateEliminationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& node) const {
+
+  std::cout << "########## PRINT\n";
+  _print_traversal(node);
+  std::cout << "### DUPL START ###\n";
+
   // std::cout << "DuplicateEliminationRule\n";
   _possible_replacement_mapping.clear();
   _sub_plans.clear();
@@ -67,8 +78,8 @@ void DuplicateEliminationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& 
     _adapt_expressions_traversal(node, node_mapping);
     std::cout << "_adapt_expressions_traversal done\n";
   }
-  // std::cout << "########## PRINT\n";
-  // _print_traversal(node);
+  std::cout << "########## PRINT\n";
+  _print_traversal(node);
   std::cout << "### DUPL END ###\n";
 }
 
